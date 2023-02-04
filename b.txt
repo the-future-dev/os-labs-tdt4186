@@ -1,0 +1,17 @@
+#include "kernel/types.h"
+#include "user/user.h"
+
+struct proc_info{
+  int pid;
+  char name[16];
+  int status;
+};
+
+int ps (void){
+    struct proc_info p[64];
+    int n = list_processes(p);
+    for (int i = 0; i<n; i++){
+        printf("%s (%d): %d", p[i].name, p[i].pid, p[i].status);
+    }
+    exit(0);
+}

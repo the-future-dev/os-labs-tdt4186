@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+
+import re
+from gradelib import *
+
+r = Runner(save("xv6.out"))
+
+
+@test(1, "[MANDATORY] hello, no args")
+def test_hello_no_args():
+    r.run_qemu(shell_script(["hello"]))
+    r.match("^Hello World$")
+
+
+@test(1, "[MANDATORY] hello John")
+def test_hello_with_arg():
+    r.run_qemu(shell_script(["hello John", "echo OK"]))
+    r.match("^OK$", "^Hello John, nice to meet you!$")
+
+
+@test(1, "[MANDATORY] hello John Doe")
+def test_hello_with_args():
+    r.run_qemu(
+        shell_script(["hello John Doe", "echo OK"]),
+    )
+    r.match("^Hello John, nice to meet you!$", "^OK$")
+
+
+@test(1, "[MANDATORY] empty ps")
+def test_ps():
+    r.run_qemu(
+        shell_script(["ps", "echo OK"]),
+    )
+    r.match("init \(1\)\: 2", "sh \(2\)\: 2", "ps \(3\)\: 4", "^OK$")
+
+
+@test(1, "[MANDATORY] shell shell ps")
+def test_ps():
+    r.run_qemu(
+        shell_script(["sh", "sh", "ps", "echo OK"]),
+    )
+    r.match(
+        "init \(1\)\: 2",
+        "sh \(2\)\: 2",
+        "sh \(3\)\: 2",
+        "sh \(4\)\: 2",
+        "ps \(5\)\: 4",
+        "^OK$",
+    )
+
+
+@test(0, "[OPTIONAL] proctree exists")
+def test_proctree_exists():
+    r.run_qemu(
+        shell_script(["proctree"]),
+    )
+    r.match(no=["exec .* failed"])
+
+
+@test(0, "[OPTIONAL] empty proctree")
+def test_pproctree():
+    r.run_qemu(
+        shell_script(["proctree", "echo OK"]),
+    )
+    r.match(
+        "^init \(1\)\: 2$",
+        "^\|\-sh \(2\)\: 2$",
+        "^  \|\-ps \(2\)\: 4$",
+        "^OK$",
+    )
+
+
+@test(0, "[OPTIONAL] shell shell proctree")
+def test_pproctree_nested():
+    r.run_qemu(
+        shell_script(["sh", "sh", "proctree", "echo OK"]),
+    )
+    r.match(
+        "^init \(1\)\: 2$",
+        "^\|\-sh \(2\)\: 2$",
+        "^  \|\-sh \(3\)\: 2$",
+        "^    \|\-sh \(4\)\: 2$",
+        "^       \|\-ps \(5\)\: 4$",
+        "^OK$",
+    )
+
+
+run_tests()
