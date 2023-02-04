@@ -681,3 +681,17 @@ procdump(void)
     printf("\n");
   }
 }
+
+int list_processes (struct proc_info * info){
+  struct proc *p;
+  int i = 0;
+  for(p = proc; p < &proc[NPROC]; p++){
+    if(p->state == UNUSED)
+      continue;
+    info[i].pid = p->pid;
+    strncpy(info[i].name, p->name, 16);
+    info[i].status = p->state;
+    i++;
+  }
+  return i;
+}
