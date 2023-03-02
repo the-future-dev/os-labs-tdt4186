@@ -1,0 +1,12 @@
+Prior Execution of: "time sh load.sh"
+#1  134 405 1648 | 7 tickets
+#2  22  103 444  | 7 tickets
+#3  30  97  413  | 7 tickets
+#4  29  88  371  | 9 tickets
+#5  20  62  252  | 8 tickets
+#6  91  275 1130 | 6 tickets
+#7  67  203 837  | 8 tickets
+#8  53  159 663  | 5 tickets
+#9  90  272 1184 | 9 tickets
+#10 76  231 941  | 8 tickets
+

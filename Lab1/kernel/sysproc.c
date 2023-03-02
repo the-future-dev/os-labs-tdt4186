@@ -94,9 +94,6 @@ uint64
 sys_procinfos(void)
 {
   struct proc_info p[64];
-  int n = list_processes(p);
-  for (int i = 0; i<n; i++){
-    printf("%s (%d): %d\n", p[i].name, p[i].pid, p[i].status);
-  }
-  return n;
+  argaddr(0, p);
+  return list_processes(p);
 }

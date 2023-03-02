@@ -1,14 +1,13 @@
 #include "kernel/types.h"
 #include "user/user.h"
 
-struct proc_info{
-  int pid;
-  char name[16];
-  int status;
-};
-
 int main (void){
-  //syscall: procinfos
-    procinfos();
+    struct proc_info p[64];
+  int n = procinfos(p);
+
+  for (int i = 0; i<n; i++){
+    printf("%s (%d): %d\n", p[i].name, p[i].pid, p[i].status);
+  }
+    
     exit(0);
 }
