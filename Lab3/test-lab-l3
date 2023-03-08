@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+
+import re
+from gradelib import *
+
+r = Runner(save("xv6.out"))
+
+
+@test(1, "[MANDATORY] vatopa exists")
+def test1():
+    r.run_qemu(shell_script(["vatopa"]))
+    r.match("Usage\: vatopa virtual_address \[pid\]")
+
+
+@test(1, "[MANDATORY] vatopa 0")
+def test2():
+    r.run_qemu(shell_script(["vatopa 0"]))
+    r.match("^0x[0-9a-fA-F]{8}$")
+
+
+@test(1, "[MANDATORY] vatopa 0 1 matches")
+def test3():
+    r.run_qemu(
+        shell_script(["vatopa 0 1", "vatopa 0 1"]),
+    )
+    r.match(
+        "^0x([0-9a-fA-F]{8})$",
+        "^0x([0-9a-fA-F]{8})$",
+        match_fn=lambda matches: int(matches[0], base=16)
+        == int(matches[1], base=16),
+    )
+
+
+@test(1, "[MANDATORY] cowtest no crash")
+def test4():
+    r.run_qemu(
+        shell_script(["cowtest 1"]),
+    )
+    r.match(no=["panic: assert failed"])
+
+
+@test(1, "[MANDATORY] cowtest 1 match addresses")
+def test5():
+    r.run_qemu(
+        shell_script(["cowtest 1"]),
+    )
+    r.match(
+        "^\[prnt\] v1 --> (\d+)$",
+        "^\[prnt\] v4 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) == int(matches[1])),
+    )
+    r.match(
+        "^\[prnt\] v3 --> (\d+)$",
+        "^\[chld\] v2 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) == int(matches[1])),
+    )
+
+
+@test(1, "[MANDATORY] cowtest 2 match addresses")
+def test6():
+    r.run_qemu(
+        shell_script(["cowtest 2"]),
+    )
+    r.match(
+        "^\[prnt\] v1 --> (\d+)$",
+        "^\[prnt\] v5 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) == int(matches[1])),
+    )
+    r.match(
+        "^\[prnt\] v2 --> (\d+)$",
+        "^\[chld\] v3 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) == int(matches[1])),
+    )
+    r.match(
+        "^\[chld\] v4 --> (\d+)$",
+        "^\[chld\] v3 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) == int(matches[1])),
+    )
+    r.match(
+        "^\[chld\] read global_var, global_var=0$",
+    )
+
+
+@test(1, "[MANDATORY] cowtest 3 match addresses")
+def test7():
+    r.run_qemu(
+        shell_script(["cowtest 3"]),
+    )
+    r.match(
+        "^\[prnt\] v1 --> (\d+)$",
+        "^\[prnt\] v6 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) == int(matches[1])),
+    )
+    r.match(
+        "^\[prnt\] v2 --> (\d+)$",
+        "^\[prnt\] v3 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) == int(matches[1])),
+    )
+    r.match(
+        "^\[prnt\] v3 --> (\d+)$",
+        "^\[chld\] v4 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) == int(matches[1])),
+    )
+    r.match(
+        "^\[chld\] v4 --> (\d+)$",
+        "^\[chld\] v5 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) - 1 == int(matches[1])),
+    )
+    r.match(
+        "^\[chld\] modified global_var, global_var=100$",
+    )
+    r.match(
+        "^\[prnt\] read global_var, global_var=0$",
+    )
+
+
+@test(1, "[MANDATORY] cowtest 4 match addresses")
+def test8():
+    r.run_qemu(
+        shell_script(["cowtest 4"]),
+    )
+    r.match(
+        "^\[prnt\] v1 --> (\d+)$",
+        "^\[prnt\] v7 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) == int(matches[1])),
+    )
+    r.match(
+        "^\[prnt\] v2 --> (\d+)$",
+        "^\[prnt\] v3 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) - 1 == int(matches[1])),
+    )
+    r.match(
+        "^\[chld\] pa1 --> 0x([0-9a-fA-F]+)$",
+        "^\[chld\] pa2 --> 0x([0-9a-fA-F]+)$",
+        "^\[prnt\] pa3 --> 0x([0-9a-fA-F]+)$",
+        match_fn=lambda matches: (
+            int(matches[0], base=16) != int(matches[1], base=16)
+            and int(matches[1], base=16) != int(matches[2], base=16)
+        ),
+    )
+    r.match(
+        "^\[prnt\] v3 --> (\d+)$",
+        "^\[chld\] v4 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) == int(matches[1])),
+    )
+    r.match(
+        "^\[prnt\] v3 --> (\d+)$",
+        "^\[chld\] v5 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) == int(matches[1])),
+    )
+    r.match(
+        "^\[chld\] v5 --> (\d+)$",
+        "^\[chld\] v6 --> (\d+)$",
+        match_fn=lambda matches: (int(matches[0]) - 1 == int(matches[1])),
+    )
+    r.match(
+        "^\[chld\] modified one element in the 1st page, global_array\[0\]=222$",
+    )
+    r.match(
+        "^\[chld\] modified two elements in the 2nd page, global_array\[2047\]=333$",
+    )
+    r.match(
+        "^\[prnt\] modified one element in the 1st page, global_array\[0\]=111$",
+    )
+
+
+run_tests()
