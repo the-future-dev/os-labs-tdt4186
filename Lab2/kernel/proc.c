@@ -6,6 +6,12 @@
 #include "proc.h"
 #include "defs.h"
 
+
+#define NQUEUE 5
+#define TICKS_TO_PROMOTE 5
+
+int time_to_promote;
+
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -213,6 +219,8 @@ allocproc(void)
 found:
     p->pid = allocpid();
     p->state = USED;
+    p->priority = NQUEUE-1;
+    p->quantum = (1 << p->priority);
 
     // Allocate a trapframe page.
     if ((p->trapframe = (struct trapframe *)kalloc()) == 0)
@@ -260,6 +268,9 @@ freeproc(struct proc *p)
     p->killed = 0;
     p->xstate = 0;
     p->state = UNUSED;
+
+    p->priority = NQUEUE-1;
+    p->quantum = (1 << p->priority);
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -583,6 +594,14 @@ void rr_scheduler(void)
     // Round Robin round has completed.
 }
 
+void promoteAll(void) {
+    struct proc *p;
+    for (p=proc; p< &proc[NPROC]; p++){
+        if (p->state != UNUSED && p->state!= ZOMBIE && p->priority < NQUEUE-1)
+            p->priority++;
+    }
+}
+
 void mlfq_scheduler(void) {
     struct proc *p;
     struct cpu *c = mycpu();
@@ -591,28 +610,34 @@ void mlfq_scheduler(void) {
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
-    for (p = proc; p < &proc[NPROC]; p++)
-    {
-        acquire(&p->lock);
-        if (p->state == RUNNABLE)
-        {
-            // Switch to chosen process.  It is the process's job
-            // to release its lock and then reacquire it
-            // before jumping back to us.
-            p->state = RUNNING;
-            c->proc = p;
-            swtch(&c->context, &p->context);
+    for(int i = NQUEUE -1; i>=0; i--){
+        for (p = proc; p < &proc[NPROC]; p++){
+            if (p->priority == i){
+                acquire(&p->lock);
+                if(p->state == RUNNABLE){
+                    int used_entire_timeslice = 0;
+                    p->state = RUNNING;
+                    c->proc = p;
+                    swtch(&c->context, &p->context);
+                    c->proc = 0;
 
-            
-
-            // Process is done running for now.
-            // It should have changed its p->state before coming back.
-            c->proc = 0;
+                    if(--p->quantum == 0){
+                        used_entire_timeslice = 1;
+                    }
+                    if (used_entire_timeslice && i > 0){
+                        p->priority--;
+                        p->quantum = (1<<p->priority);
+                    }
+                }
+                release(&p->lock);
+            }
         }
-        release(&p->lock);
     }
-    // In case a setsched happened, we will switch to the new scheduler after one
-    // Round Robin round has completed.
+
+    if(--time_to_promote == 0){
+        promoteAll();
+        time_to_promote = TICKS_TO_PROMOTE;
+    }
 }
 
 // Switch to scheduler.  Must hold only p->lock
@@ -853,6 +878,9 @@ void schedset(int id)
     {
         printf("Scheduler unchanged: ID out of range\n");
         return;
+    }
+    if(id == 2){
+        time_to_promote = TICKS_TO_PROMOTE;
     }
     sched_pointer = available_schedulers[id].impl;
     printf("Scheduler successfully changed to %s\n", available_schedulers[id].name);
