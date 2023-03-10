@@ -119,8 +119,16 @@ uint64 sys_schedset(void)
 
 uint64 sys_va2pa(void)
 {
-    printf("TODO: IMPLEMENT ME [%s@%s (line %d)]", __func__, __FILE__, __LINE__);
-    return 0;
+    int addr = 0, pid = 0;
+    
+    argint(0, &addr);
+    argint(1, &pid);
+
+    if(pid == -1){
+        pid =  myproc()->pid;
+    }
+    
+    return va2pa(addr, pid);
 }
 
 uint64 sys_pfreepages(void)

@@ -830,3 +830,19 @@ void schedset(int id)
     sched_pointer = available_schedulers[id].impl;
     printf("Scheduler successfully changed to %s\n", available_schedulers[id].name);
 }
+
+int va2pa (int addr, int pid)
+{
+    struct proc *p;
+
+    for (p=proc; p < &proc[NPROC]; p++){
+        if(p->pid == pid)
+            break;
+    }
+
+    if ( p >= &proc[NPROC] || p->state == UNUSED){
+        return 0;
+    }
+
+    return walkaddr(p->pagetable, addr);
+}
